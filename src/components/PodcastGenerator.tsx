@@ -1,23 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { TopicInput } from './TopicInput';
 import { ScriptDisplay } from './ScriptDisplay';
 import { AudioPlayer } from './AudioPlayer';
 import { LoadingState } from './LoadingState';
+import { PodcastHistory } from './PodcastHistory';
+import { WarningModal } from './WarningModal';
+import { savePodcast, updatePodcastAudio, type Podcast } from '../lib/supabase';
 
 export interface PodcastData {
+  id?: string;
   script: string;
   audioUrl?: string;
+  topic?: string;
 }
 
 export function PodcastGenerator() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [podcastData, setPodcastData] = useState<PodcastData | null>(null);
   const [currentStep, setCurrentStep] = useState<'idle' | 'script' | 'audio'>('idle');
+  const [refreshHistory, setRefreshHistory] = useState(0);
+  const [currentTopic, setCurrentTopic] = useState('');
+  const [showWarning, setShowWarning] = useState(false);
+  const scriptRef = useRef<HTMLDivElement>(null);
 
   const handleGeneratePodcast = async (topic: string) => {
+    if (!topic.trim()) {
+      setShowWarning(true);
+      return;
+    }
+
     setIsGenerating(true);
     setCurrentStep('script');
     setPodcastData(null);
+    setCurrentTopic(''); // Clear the topic field immediately
 
     try {
       // Check if Supabase is configured
@@ -30,14 +45,28 @@ export function PodcastGenerator() {
 
       // Generate script using Supabase Edge Function
       const script = await generateScript(topic);
-      setPodcastData({ script });
+      
+      // Save podcast to database
+      const savedPodcast = await savePodcast(topic, script);
+      
+      setPodcastData({ 
+        id: savedPodcast.id,
+        script, 
+        topic,
+      });
 
       setCurrentStep('audio');
 
       // Generate audio using Supabase Edge Function
-      const audioUrl = await generateAudio(script);
+      const audioBlob = await generateAudio(script);
+      
+      // Upload audio and get URL
+      const audioUrl = await updatePodcastAudio(savedPodcast.id, audioBlob);
       
       setPodcastData(prev => prev ? { ...prev, audioUrl } : null);
+      
+      // Refresh history to show the new podcast
+      setRefreshHistory(prev => prev + 1);
     } catch (error) {
       console.error('Error generating podcast:', error);
       
@@ -71,6 +100,23 @@ export function PodcastGenerator() {
       setIsGenerating(false);
       setCurrentStep('idle');
     }
+  };
+
+  const handleLoadPodcast = (podcast: Podcast) => {
+    setPodcastData({
+      id: podcast.id,
+      script: podcast.script,
+      audioUrl: podcast.audio_url,
+      topic: podcast.topic,
+    });
+
+    // Instant scroll to script section
+    setTimeout(() => {
+      scriptRef.current?.scrollIntoView({ 
+        behavior: 'auto', // Changed from 'smooth' to 'auto' for instant scroll
+        block: 'start' 
+      });
+    }, 100);
   };
 
   const generateScript = async (topic: string): Promise<string> => {
@@ -110,7 +156,7 @@ export function PodcastGenerator() {
     return data.script;
   };
 
-  const generateAudio = async (script: string): Promise<string> => {
+  const generateAudio = async (script: string): Promise<Blob> => {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
@@ -138,23 +184,39 @@ export function PodcastGenerator() {
       throw new Error(errorMessage);
     }
 
-    // Get the audio blob and create a URL
-    const audioBlob = await response.blob();
-    return URL.createObjectURL(audioBlob);
+    // Return the audio blob directly
+    return await response.blob();
   };
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
-      <TopicInput onGenerate={handleGeneratePodcast} isGenerating={isGenerating} />
+      <TopicInput 
+        onGenerate={handleGeneratePodcast} 
+        isGenerating={isGenerating}
+        currentTopic={currentTopic}
+        setCurrentTopic={setCurrentTopic}
+      />
       
       {isGenerating && <LoadingState currentStep={currentStep} />}
       
       {podcastData && (
-        <div className="space-y-6">
-          <ScriptDisplay script={podcastData.script} />
-          {podcastData.audioUrl && <AudioPlayer audioUrl={podcastData.audioUrl} />}
+        <div className="space-y-6" ref={scriptRef}>
+          <ScriptDisplay script={podcastData.script} topic={podcastData.topic} />
+          {podcastData.audioUrl && <AudioPlayer audioUrl={podcastData.audioUrl} topic={podcastData.topic} />}
         </div>
       )}
+
+      <PodcastHistory 
+        onLoadPodcast={handleLoadPodcast} 
+        refreshTrigger={refreshHistory}
+      />
+
+      <WarningModal
+        isOpen={showWarning}
+        onClose={() => setShowWarning(false)}
+        title="Topic Required"
+        message="Please enter a topic for your podcast episode before generating."
+      />
     </div>
   );
 }

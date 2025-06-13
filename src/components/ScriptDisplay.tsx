@@ -3,9 +3,10 @@ import { Copy, Download, FileText, Check } from 'lucide-react';
 
 interface ScriptDisplayProps {
   script: string;
+  topic?: string;
 }
 
-export function ScriptDisplay({ script }: ScriptDisplayProps) {
+export function ScriptDisplay({ script, topic }: ScriptDisplayProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -19,7 +20,7 @@ export function ScriptDisplay({ script }: ScriptDisplayProps) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'brainwaves-script.txt';
+    a.download = `brainwaves-${topic ? topic.toLowerCase().replace(/\s+/g, '-') : 'script'}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -56,7 +57,12 @@ export function ScriptDisplay({ script }: ScriptDisplayProps) {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <FileText className="w-6 h-6 text-blue-400" />
-          <h3 className="text-xl font-semibold text-white">Podcast Script</h3>
+          <div>
+            <h3 className="text-xl font-semibold text-white">Podcast Script</h3>
+            {topic && (
+              <p className="text-sm text-gray-400 mt-1">Topic: {topic}</p>
+            )}
+          </div>
         </div>
         
         <div className="flex gap-2">

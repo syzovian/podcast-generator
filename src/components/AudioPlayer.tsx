@@ -3,13 +3,15 @@ import { Play, Pause, Download, Volume2, SkipBack, SkipForward } from 'lucide-re
 
 interface AudioPlayerProps {
   audioUrl: string;
+  topic?: string;
 }
 
-export function AudioPlayer({ audioUrl }: AudioPlayerProps) {
+export function AudioPlayer({ audioUrl, topic }: AudioPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
+  const [isDownloading, setIsDownloading] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
@@ -73,13 +75,37 @@ export function AudioPlayer({ audioUrl }: AudioPlayerProps) {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  const handleDownload = () => {
-    const a = document.createElement('a');
-    a.href = audioUrl;
-    a.download = 'brainwaves-episode.mp3';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+  const handleDownload = async () => {
+    if (isDownloading) return;
+    
+    try {
+      setIsDownloading(true);
+      
+      // Fetch the audio file as blob to avoid CORS issues
+      const response = await fetch(audioUrl);
+      if (!response.ok) throw new Error('Failed to fetch audio file');
+      
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      
+      // Create download link
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = topic 
+        ? `brainwaves-${topic.toLowerCase().replace(/\s+/g, '-')}.mp3`
+        : 'brainwaves-episode.mp3';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      
+      // Clean up
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading audio:', error);
+      alert('Failed to download audio file. Please try again.');
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   return (
@@ -87,15 +113,25 @@ export function AudioPlayer({ audioUrl }: AudioPlayerProps) {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <Volume2 className="w-6 h-6 text-emerald-400" />
-          <h3 className="text-xl font-semibold text-white">Podcast Audio</h3>
+          <div>
+            <h3 className="text-xl font-semibold text-white">Podcast Audio</h3>
+            {topic && (
+              <p className="text-sm text-gray-400 mt-1">Topic: {topic}</p>
+            )}
+          </div>
         </div>
         
         <button
           onClick={handleDownload}
-          className="glass-button p-2 text-gray-300 hover:text-white transition-all duration-200"
+          disabled={isDownloading}
+          className="glass-button p-2 text-gray-300 hover:text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
           title="Download audio"
         >
-          <Download className="w-4 h-4" />
+          {isDownloading ? (
+            <div className="w-4 h-4 border border-gray-300/30 border-t-gray-300 rounded-full animate-spin"></div>
+          ) : (
+            <Download className="w-4 h-4" />
+          )}
         </button>
       </div>
 

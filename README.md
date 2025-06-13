@@ -39,6 +39,32 @@ A modern AI-powered podcast generator that creates dynamic conversations between
    npm run dev
    ```
 
+## Deployment
+
+### Netlify Deployment
+
+1. **Deploy to Netlify**
+   - Connect your GitHub repository to Netlify
+   - Set build command: `npm run build`
+   - Set publish directory: `dist`
+
+2. **Configure Environment Variables in Netlify**
+   In your Netlify Dashboard → Site Settings → Environment Variables, add:
+   ```
+   VITE_SUPABASE_URL=your_supabase_project_url
+   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
+
+3. **Redeploy**
+   - Trigger a new deployment after adding environment variables
+   - The app should now work correctly in production
+
+### Important Notes for Production
+
+- **Environment Variables**: Make sure to set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in your deployment platform
+- **API Keys**: The OpenAI and ElevenLabs API keys are configured in Supabase Edge Functions, not in the frontend
+- **Security**: Never expose API keys in frontend code - they're safely stored in Supabase
+
 ## Getting API Keys
 
 ### OpenAI API Key
@@ -55,9 +81,13 @@ A modern AI-powered podcast generator that creates dynamic conversations between
 
 ## Environment Variables
 
-The app uses these environment variables:
+**Frontend (.env file for local development):**
+```
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
 
-**Frontend (.env file):**
+**Frontend (Netlify Environment Variables for production):**
 ```
 VITE_SUPABASE_URL=your_supabase_project_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
@@ -91,6 +121,13 @@ All API keys are stored securely as environment variables and never exposed in t
 
 ## Troubleshooting
 
+### Deployment Issues
+
+**"Setup Required" showing on deployed site:**
+- Make sure you've added `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to your deployment platform's environment variables
+- Redeploy after adding environment variables
+- Check that the environment variable names are exactly correct (including the `VITE_` prefix)
+
 **"Failed to generate podcast" error:**
 - Make sure you've set up Supabase and connected your project
 - Verify all environment variables are set in Supabase Edge Functions
@@ -99,6 +136,23 @@ All API keys are stored securely as environment variables and never exposed in t
 **Setup issues:**
 - Use the "Connect to Supabase" button in the app for easy setup
 - Follow the step-by-step instructions in the setup notice
+
+### Common Deployment Platform Instructions
+
+**Netlify:**
+1. Site Settings → Environment Variables
+2. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`
+3. Redeploy
+
+**Vercel:**
+1. Project Settings → Environment Variables
+2. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`
+3. Redeploy
+
+**Railway:**
+1. Variables tab
+2. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`
+3. Redeploy
 
 ## Contributing
 
