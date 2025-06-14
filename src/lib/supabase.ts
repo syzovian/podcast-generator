@@ -13,6 +13,7 @@ export interface Podcast {
   id: string;
   topic: string;
   script: string;
+  summary?: string;
   audio_url?: string;
   created_at: string;
   updated_at: string;
@@ -62,6 +63,17 @@ export async function updatePodcastAudio(id: string, audioBlob: Blob): Promise<s
   }
 
   return publicUrl;
+}
+
+export async function updatePodcastSummary(id: string, summary: string): Promise<void> {
+  const { error } = await supabase
+    .from('podcasts')
+    .update({ summary })
+    .eq('id', id);
+
+  if (error) {
+    throw new Error(`Failed to update podcast summary: ${error.message}`);
+  }
 }
 
 export async function getPodcasts(limit = 10): Promise<Podcast[]> {

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Mic, MicOff, Sparkles } from 'lucide-react';
+import { getRandomTopicSuggestions } from '../lib/utils';
 
 interface TopicInputProps {
   onGenerate: (topic: string) => void;
@@ -11,9 +12,13 @@ interface TopicInputProps {
 export function TopicInput({ onGenerate, isGenerating, currentTopic, setCurrentTopic }: TopicInputProps) {
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
+  const [suggestedTopics, setSuggestedTopics] = useState<string[]>([]);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   useEffect(() => {
+    // Generate random topic suggestions on component mount
+    setSuggestedTopics(getRandomTopicSuggestions());
+
     // Check if speech recognition is supported
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
       setSpeechSupported(true);
@@ -86,14 +91,9 @@ export function TopicInput({ onGenerate, isGenerating, currentTopic, setCurrentT
     }
   };
 
-  const suggestedTopics = [
-    'The Future of Artificial Intelligence',
-    'Climate Change Solutions',
-    'Space Exploration and Mars Colonization',
-    'The Psychology of Social Media',
-    'Renewable Energy Technologies',
-    'Mental Health in the Digital Age'
-  ];
+  const refreshTopics = () => {
+    setSuggestedTopics(getRandomTopicSuggestions());
+  };
 
   return (
     <div className="glass-morphism glass-topic p-8">
@@ -162,11 +162,21 @@ export function TopicInput({ onGenerate, isGenerating, currentTopic, setCurrentT
       </form>
 
       <div className="mt-8">
-        <p className="text-sm text-gray-300 mb-4">Need inspiration? Try these topics:</p>
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-sm text-gray-300">Need inspiration? Try these topics:</p>
+          <button
+            onClick={refreshTopics}
+            disabled={isGenerating}
+            className="glass-button px-3 py-1.5 text-xs text-gray-300 hover:text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Get new topic suggestions"
+          >
+            ↻ Refresh
+          </button>
+        </div>
         <div className="flex flex-wrap gap-2">
           {suggestedTopics.map((suggestedTopic, index) => (
             <button
-              key={index}
+              key={`${suggestedTopic}-${index}`}
               onClick={() => setCurrentTopic(suggestedTopic)}
               disabled={isGenerating}
               className="glass-button px-3 py-1.5 text-sm text-gray-300 hover:text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"

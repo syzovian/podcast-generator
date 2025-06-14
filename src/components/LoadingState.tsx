@@ -1,13 +1,14 @@
 import React from 'react';
-import { FileText, Volume2, CheckCircle } from 'lucide-react';
+import { FileText, Volume2, CheckCircle, FileSearch } from 'lucide-react';
 
 interface LoadingStateProps {
-  currentStep: 'idle' | 'script' | 'audio';
+  currentStep: 'idle' | 'script' | 'summary' | 'audio';
 }
 
 export function LoadingState({ currentStep }: LoadingStateProps) {
   const steps = [
     { key: 'script', icon: FileText, label: 'Generating Script', description: 'Creating conversational dialogue...' },
+    { key: 'summary', icon: FileSearch, label: 'Creating Summary', description: 'Generating episode preview...' },
     { key: 'audio', icon: Volume2, label: 'Synthesizing Audio', description: 'Converting to speech with AI voices...' },
   ];
 
@@ -22,7 +23,8 @@ export function LoadingState({ currentStep }: LoadingStateProps) {
         {steps.map((step, index) => {
           const isActive = currentStep === step.key;
           const isCompleted = 
-            (step.key === 'script' && ['audio'].includes(currentStep)) ||
+            (step.key === 'script' && ['summary', 'audio'].includes(currentStep)) ||
+            (step.key === 'summary' && ['audio'].includes(currentStep)) ||
             (step.key === 'audio' && currentStep === 'idle');
 
           return (

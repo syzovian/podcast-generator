@@ -5,19 +5,21 @@ import { AudioPlayer } from './AudioPlayer';
 import { LoadingState } from './LoadingState';
 import { PodcastHistory } from './PodcastHistory';
 import { WarningModal } from './WarningModal';
-import { savePodcast, updatePodcastAudio, type Podcast } from '../lib/supabase';
+import { savePodcast, updatePodcastAudio, updatePodcastSummary, type Podcast } from '../lib/supabase';
+import { generateSummary } from '../lib/utils';
 
 export interface PodcastData {
   id?: string;
   script: string;
   audioUrl?: string;
   topic?: string;
+  summary?: string;
 }
 
 export function PodcastGenerator() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [podcastData, setPodcastData] = useState<PodcastData | null>(null);
-  const [currentStep, setCurrentStep] = useState<'idle' | 'script' | 'audio'>('idle');
+  const [currentStep, setCurrentStep] = useState<'idle' | 'script' | 'summary' | 'audio'>('idle');
   const [refreshHistory, setRefreshHistory] = useState(0);
   const [currentTopic, setCurrentTopic] = useState('');
   const [showWarning, setShowWarning] = useState(false);
@@ -54,6 +56,19 @@ export function PodcastGenerator() {
         script, 
         topic,
       });
+
+      // Generate summary immediately after script
+      setCurrentStep('summary');
+      
+      try {
+        const summary = await generateSummary(script, topic);
+        await updatePodcastSummary(savedPodcast.id, summary);
+        
+        setPodcastData(prev => prev ? { ...prev, summary } : null);
+      } catch (summaryError) {
+        console.warn('Failed to generate summary, continuing with audio generation:', summaryError);
+        // Continue even if summary generation fails
+      }
 
       setCurrentStep('audio');
 
@@ -108,6 +123,7 @@ export function PodcastGenerator() {
       script: podcast.script,
       audioUrl: podcast.audio_url,
       topic: podcast.topic,
+      summary: podcast.summary,
     });
 
     // Instant scroll to script section

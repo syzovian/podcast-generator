@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { AlertTriangle, X } from 'lucide-react';
 
 interface WarningModalProps {
@@ -17,10 +18,19 @@ export function WarningModal({ isOpen, onClose, title, message }: WarningModalPr
     }
   };
 
-  return (
+  const modalContent = (
     <div 
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4"
       onClick={handleBackdropClick}
+      style={{ 
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100vw',
+        height: '100vh'
+      }}
     >
       <div className="glass-morphism glass-modal p-6 max-w-sm w-full mx-auto">
         <div className="flex items-start gap-4">
@@ -52,4 +62,6 @@ export function WarningModal({ isOpen, onClose, title, message }: WarningModalPr
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }

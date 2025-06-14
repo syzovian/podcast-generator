@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { History, Play, Pause, Calendar, FileText, ChevronDown, ChevronUp, Volume2, Trash2, Download } from 'lucide-react';
 import { getPodcasts, deletePodcast, type Podcast } from '../lib/supabase';
+import { toTitleCase } from '../lib/utils';
 import { ConfirmationModal } from './ConfirmationModal';
 
 interface PodcastHistoryProps {
@@ -12,7 +13,7 @@ export function PodcastHistory({ onLoadPodcast, refreshTrigger }: PodcastHistory
   const [podcasts, setPodcasts] = useState<Podcast[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [expandedScript, setExpandedScript] = useState<string | null>(null);
+  const [expandedSummary, setExpandedSummary] = useState<string | null>(null);
   const [playingAudio, setPlayingAudio] = useState<string | null>(null);
   const [audioProgress, setAudioProgress] = useState<{ [key: string]: number }>({});
   const [audioDuration, setAudioDuration] = useState<{ [key: string]: number }>({});
@@ -70,7 +71,7 @@ export function PodcastHistory({ onLoadPodcast, refreshTrigger }: PodcastHistory
       // Remove from local state
       setPodcasts(prev => prev.filter(p => p.id !== podcastId));
       
-      // Clean up audio ref
+      // Clean up audio ref and loading states
       delete audioRefs.current[podcastId];
       setAudioProgress(prev => {
         const newProgress = { ...prev };
@@ -148,9 +149,15 @@ export function PodcastHistory({ onLoadPodcast, refreshTrigger }: PodcastHistory
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  const toggleScript = (podcastId: string, e: React.MouseEvent) => {
+  const toggleSummary = (podcast: Podcast, e: React.MouseEvent) => {
     e.stopPropagation();
-    setExpandedScript(expandedScript === podcastId ? null : podcastId);
+    const podcastId = podcast.id;
+    
+    if (expandedSummary === podcastId) {
+      setExpandedSummary(null);
+    } else {
+      setExpandedSummary(podcastId);
+    }
   };
 
   const handleProgressBarClick = (podcast: Podcast, e: React.MouseEvent) => {
@@ -278,31 +285,6 @@ export function PodcastHistory({ onLoadPodcast, refreshTrigger }: PodcastHistory
     }
   };
 
-  const formatScript = (script: string) => {
-    return script.split('\n').map((line, index) => {
-      if (line.startsWith('ALEX:') || line.startsWith('EVAN:')) {
-        const [speaker, ...content] = line.split(':');
-        return (
-          <div key={index} className="mb-2">
-            <span className={`font-medium text-xs ${
-              speaker === 'ALEX' ? 'text-blue-400' : 'text-orange-400'
-            }`}>
-              {speaker}:
-            </span>
-            <span className="text-gray-300 ml-2 text-xs">{content.join(':').trim()}</span>
-          </div>
-        );
-      }
-      return line.trim() ? (
-        <div key={index} className="mb-1 text-gray-400 italic text-xs">
-          {line}
-        </div>
-      ) : (
-        <div key={index} className="mb-1"></div>
-      );
-    });
-  };
-
   if (loading) {
     return (
       <div className="glass-morphism glass-history p-6">
@@ -362,7 +344,7 @@ export function PodcastHistory({ onLoadPodcast, refreshTrigger }: PodcastHistory
           <div 
             className="space-y-3 pr-4" 
             style={{ 
-              height: '400px', // Increased from 384px to 420px for better third card visibility
+              height: '400px',
               overflowY: 'auto' 
             }}
           >
@@ -374,15 +356,15 @@ export function PodcastHistory({ onLoadPodcast, refreshTrigger }: PodcastHistory
                 } ${deletingId === podcast.id ? 'opacity-50 pointer-events-none' : ''}`}
                 style={{ 
                   zIndex: podcasts.length - index, 
-                  minHeight: '120px',
-                  height: '120px' // Fixed height for consistent layout
+                  minHeight: expandedSummary === podcast.id ? 'auto' : '120px',
+                  height: expandedSummary === podcast.id ? 'auto' : '120px'
                 }}
               >
                 {/* Main Episode Info */}
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <h4 className="font-medium text-white text-sm mb-1 group-hover:text-purple-300 transition-colors duration-150">
-                      {truncateText(podcast.topic, 45)}
+                      {truncateText(toTitleCase(podcast.topic), 45)}
                     </h4>
                     <div className="flex items-center gap-3 text-xs text-gray-400">
                       <div className="flex items-center gap-1">
@@ -462,12 +444,12 @@ export function PodcastHistory({ onLoadPodcast, refreshTrigger }: PodcastHistory
                   )}
                   
                   <button
-                    onClick={(e) => toggleScript(podcast.id, e)}
+                    onClick={(e) => toggleSummary(podcast, e)}
                     className="glass-button px-3 py-1.5 text-xs text-blue-300 hover:text-blue-200 transition-all duration-150 flex items-center gap-1"
                   >
                     <FileText className="w-3 h-3" />
-                    Script
-                    {expandedScript === podcast.id ? (
+                    Summary
+                    {expandedSummary === podcast.id ? (
                       <ChevronUp className="w-3 h-3" />
                     ) : (
                       <ChevronDown className="w-3 h-3" />
@@ -485,11 +467,13 @@ export function PodcastHistory({ onLoadPodcast, refreshTrigger }: PodcastHistory
                   </button>
                 </div>
 
-                {/* Expanded Script */}
-                {expandedScript === podcast.id && (
+                {/* Expanded Summary */}
+                {expandedSummary === podcast.id && (
                   <div className="mt-3 pt-3 border-t border-white/10">
-                    <div className="glass-input bg-black/20 rounded-lg p-3 max-h-48 overflow-y-auto">
-                      {formatScript(podcast.script)}
+                    <div className="glass-input bg-black/20 rounded-lg p-3">
+                      <p className="text-gray-300 text-sm leading-relaxed">
+                        {podcast.summary || 'Summary not available for this episode.'}
+                      </p>
                     </div>
                   </div>
                 )}
